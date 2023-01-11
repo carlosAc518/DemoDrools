@@ -1,0 +1,49 @@
+package com.sample.rules
+
+dialect "mvel"
+
+import com.sample.model.Customer
+import com.sample.model.Product
+import com.sample.model.Purchase
+import com.sample.model.Discount
+ 
+rule "Retiro de descuento"
+    when
+        $c : Customer()
+        not Discount( customer == $c )
+    then
+        $c.discount = 0;
+        System.out.println( "Cliente " + $c.name + " tiene un descuento de " + $c.discount );
+end
+
+rule "Notificación de descuento otorgado"
+    when
+        $c : Customer()
+        $d : Discount( customer == $c )
+    then
+        System.out.println( "Cliente " + $c.name + " tiene un descuento otorgado de " + $d.amount );
+end
+
+rule "Aplicar descuento del 10% si el total de compras es mayor a 100"
+    no-loop true
+    dialect "java"
+    when
+        $c : Customer()
+        $i : Double(doubleValue > 100) from accumulate (
+                Purchase( customer == $c, $price : product.price ),
+                sum( $price )
+        )
+    then
+        $c.setDiscount( 10 );
+        insertLogical( new Discount( $c, 10 ) );
+        System.out.println( "Cliente " + $c.getName() + " tiene un descuento de " + $c.getDiscount() + "% por su compra total de " + $i );
+end
+
+rule "Prueba de prioridad"
+    salience 10
+    when
+        $c : Customer()
+        $p : Purchase( customer == $c )
+    then
+        System.out.println( "Cliente " + $c.name + " compró " + $p.product.name );
+end
